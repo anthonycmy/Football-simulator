@@ -3,7 +3,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Football Match Simulator - Local Version</title>
+<title>Football Match Simulator - v2</title>
 <style>
   body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
   .container { width: 90%; max-width: 800px; margin: auto; padding: 20px; background: white; margin-top: 20px; border-radius: 8px; }
@@ -42,8 +42,6 @@
 </div>
 
 <script>
-console.log("Football Match Simulator starting...");
-
 const database = {
     coaches: [
         {name: "Arne Slot", club: "Liverpool"},
@@ -103,36 +101,39 @@ populateCoaches();
 let team1 = {}, team2 = {}, stats = {}, eventsLog = [];
 
 function startMatch() {
-    console.log("Starting match...");
     team1.name = document.getElementById('team1Name').value;
     team1.coach = document.getElementById('coach1').value;
     team2.name = document.getElementById('team2Name').value;
     team2.coach = document.getElementById('coach2').value;
 
-    function assignPlayers() {
+    function assignPlayers(pool) {
         const positions = { GK:1, DF:4, MF:3, FW:3 };
         let selected = [];
         Object.keys(positions).forEach(pos => {
-            const pool = database.players.filter(p => p.position === pos);
+            let available = pool.filter(p => p.position === pos);
             for (let i=0; i<positions[pos]; i++) {
-                const player = pool.splice(Math.floor(Math.random()*pool.length), 1)[0];
+                const player = available.splice(Math.floor(Math.random()*available.length), 1)[0];
                 selected.push(player);
+                pool.splice(pool.indexOf(player),1);
             }
         });
         return selected;
     }
-    team1.players = assignPlayers();
-    team2.players = assignPlayers();
 
-    document.getElementById('lineup1').innerHTML = "<h3>" + team1.name + " (Coach: " + team1.coach + ")</h3>" + team1.players.map(p => p.name + " - " + p.club).join("<br>");
-    document.getElementById('lineup2').innerHTML = "<h3>" + team2.name + " (Coach: " + team2.coach + ")</h3>" + team2.players.map(p => p.name + " - " + p.club).join("<br>");
+    let playerPool = [...database.players];
+    team1.players = assignPlayers(playerPool);
+    team2.players = assignPlayers(playerPool);
+
+    document.getElementById('lineup1').innerHTML = "<h3>" + team1.name + " (Coach: " + team1.coach + ")</h3>" + 
+        team1.players.map(p => p.name + " (" + p.position + ") - " + p.club).join("<br>");
+    document.getElementById('lineup2').innerHTML = "<h3>" + team2.name + " (Coach: " + team2.coach + ")</h3>" + 
+        team2.players.map(p => p.name + " (" + p.position + ") - " + p.club).join("<br>");
 
     document.getElementById('setup').style.display = 'none';
     document.getElementById('preMatch').style.display = 'block';
 }
 
 function simulateMatch() {
-    console.log("Simulating match...");
     document.getElementById('preMatch').style.display = 'none';
     document.getElementById('match').style.display = 'block';
     eventsLog = [];
@@ -157,28 +158,39 @@ function simulateMatch() {
         const player = team.players[Math.floor(Math.random()*team.players.length)];
         const template = eventTemplates[Math.floor(Math.random()*eventTemplates.length)];
         const eventText = template.replace("{minute}", minute).replace("{player}", player.name).replace("{team}", team.name);
-        eventsLog.push(eventText);
+        eventsLog.push({minute: minute, text: eventText, team: team, template: template, player: player});
+    }
 
-        if (template.includes("scores")) {
-            if (team === team1) { stats.goals1++; stats.scorers1.push(player.name); }
-            else { stats.goals2++; stats.scorers2.push(player.name); }
-        }
-        if (template.includes("shot") || template.includes("goal") || template.includes("hits the post")) {
-            if (team === team1) stats.shots1++; else stats.shots2++;
-        }
-        if (template.includes("Yellow card")) {
-            if (team === team1) stats.yellow1++; else stats.yellow2++;
-        }
-        if (template.includes("Red card")) {
-            if (team === team1) stats.red1++; else stats.red2++;
+    eventsLog.sort((a,b) => a.minute - b.minute);
+
+    let idx = 0;
+    function showNextEvent() {
+        if (idx < eventsLog.length) {
+            let e = eventsLog[idx];
+            document.getElementById('events').innerHTML += e.text + "<br>";
+            if (e.template.includes("scores")) {
+                if (e.team === team1) { stats.goals1++; stats.scorers1.push(e.player.name); }
+                else { stats.goals2++; stats.scorers2.push(e.player.name); }
+            }
+            if (e.template.includes("shot") || e.template.includes("goal") || e.template.includes("hits the post")) {
+                if (e.team === team1) stats.shots1++; else stats.shots2++;
+            }
+            if (e.template.includes("Yellow card")) {
+                if (e.team === team1) stats.yellow1++; else stats.yellow2++;
+            }
+            if (e.template.includes("Red card")) {
+                if (e.team === team1) stats.red1++; else stats.red2++;
+            }
+            idx++;
+            setTimeout(showNextEvent, 7000);
+        } else {
+            showStats();
         }
     }
-    document.getElementById('events').innerHTML = eventsLog.sort((a,b) => parseInt(a) - parseInt(b)).join("<br>");
-    setTimeout(showStats, 1000);
+    showNextEvent();
 }
 
 function showStats() {
-    console.log("Showing stats...");
     document.getElementById('match').style.display = 'none';
     document.getElementById('postMatch').style.display = 'block';
     document.getElementById('stats').innerHTML = "<h3>Final Score: " + team1.name + " " + stats.goals1 + " - " + stats.goals2 + " " + team2.name + "</h3>" +
