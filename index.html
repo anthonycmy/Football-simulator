@@ -1,0 +1,193 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Football Match Simulator - Local Version</title>
+<style>
+  body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+  .container { width: 90%; max-width: 800px; margin: auto; padding: 20px; background: white; margin-top: 20px; border-radius: 8px; }
+  h1, h2, h3 { text-align: center; }
+  select, input { padding: 5px; margin: 5px; }
+  button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+  .lineup, .events, .stats { margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<div class="container" id="setup">
+  <h1>Football Match Simulator</h1>
+  <h3>Team 1 Name:</h3><input id="team1Name" type="text" value="Team 1">
+  <h3>Coach:</h3><select id="coach1"></select>
+  <h3>Team 2 Name:</h3><input id="team2Name" type="text" value="Team 2">
+  <h3>Coach:</h3><select id="coach2"></select><br>
+  <button onclick="startMatch()">Start Match</button>
+</div>
+
+<div class="container" id="preMatch" style="display:none;">
+  <h2>Starting Lineups</h2>
+  <div class="lineup" id="lineup1"></div>
+  <div class="lineup" id="lineup2"></div>
+  <button onclick="simulateMatch()">Kick Off</button>
+</div>
+
+<div class="container" id="match" style="display:none;">
+  <h2>Match Highlights</h2>
+  <div class="events" id="events"></div>
+</div>
+
+<div class="container" id="postMatch" style="display:none;">
+  <h2>Match Stats</h2>
+  <div class="stats" id="stats"></div>
+</div>
+
+<script>
+console.log("Football Match Simulator starting...");
+
+const database = {
+    coaches: [
+        {name: "Arne Slot", club: "Liverpool"},
+        {name: "Pep Guardiola", club: "Manchester City"},
+        {name: "Mikel Arteta", club: "Arsenal"},
+        {name: "Vincent Kompany", club: "Bayern Munich"},
+        {name: "Carlo Ancelotti", club: "Real Madrid"},
+        {name: "Xavi Hernández", club: "Barcelona"},
+        {name: "Simone Inzaghi", club: "Inter Milan"},
+        {name: "Stefano Pioli", club: "AC Milan"},
+        {name: "Luis Enrique", club: "Paris Saint-Germain"}
+    ],
+    players: [
+        {name: "Alisson Becker", club: "Liverpool", position: "GK"},
+        {name: "Virgil van Dijk", club: "Liverpool", position: "DF"},
+        {name: "Trent Alexander-Arnold", club: "Liverpool", position: "DF"},
+        {name: "Kevin De Bruyne", club: "Manchester City", position: "MF"},
+        {name: "Erling Haaland", club: "Manchester City", position: "FW"},
+        {name: "Declan Rice", club: "Arsenal", position: "MF"},
+        {name: "Bukayo Saka", club: "Arsenal", position: "FW"},
+        {name: "Kylian Mbappé", club: "Real Madrid", position: "FW"},
+        {name: "Jude Bellingham", club: "Real Madrid", position: "MF"},
+        {name: "Vinícius Júnior", club: "Real Madrid", position: "FW"},
+        {name: "Robert Lewandowski", club: "Barcelona", position: "FW"},
+        {name: "Pedri", club: "Barcelona", position: "MF"},
+        {name: "Manuel Neuer", club: "Bayern Munich", position: "GK"},
+        {name: "Joshua Kimmich", club: "Bayern Munich", position: "MF"},
+        {name: "Harry Kane", club: "Bayern Munich", position: "FW"},
+        {name: "Jamal Musiala", club: "Bayern Munich", position: "MF"},
+        {name: "Mike Maignan", club: "AC Milan", position: "GK"},
+        {name: "Theo Hernández", club: "AC Milan", position: "DF"},
+        {name: "Lautaro Martínez", club: "Inter Milan", position: "FW"},
+        {name: "Nicolo Barella", club: "Inter Milan", position: "MF"},
+        {name: "Gianluigi Donnarumma", club: "Paris Saint-Germain", position: "GK"},
+        {name: "Marquinhos", club: "Paris Saint-Germain", position: "DF"},
+        {name: "Ousmane Dembélé", club: "Paris Saint-Germain", position: "FW"},
+        {name: "Warren Zaïre-Emery", club: "Paris Saint-Germain", position: "MF"}
+    ]
+};
+
+function populateCoaches() {
+    const c1 = document.getElementById('coach1');
+    const c2 = document.getElementById('coach2');
+    database.coaches.forEach(coach => {
+        const opt1 = document.createElement('option');
+        opt1.value = coach.name;
+        opt1.text = coach.name + " (" + coach.club + ")";
+        c1.appendChild(opt1);
+        const opt2 = document.createElement('option');
+        opt2.value = coach.name;
+        opt2.text = coach.name + " (" + coach.club + ")";
+        c2.appendChild(opt2);
+    });
+}
+populateCoaches();
+
+let team1 = {}, team2 = {}, stats = {}, eventsLog = [];
+
+function startMatch() {
+    console.log("Starting match...");
+    team1.name = document.getElementById('team1Name').value;
+    team1.coach = document.getElementById('coach1').value;
+    team2.name = document.getElementById('team2Name').value;
+    team2.coach = document.getElementById('coach2').value;
+
+    function assignPlayers() {
+        const positions = { GK:1, DF:4, MF:3, FW:3 };
+        let selected = [];
+        Object.keys(positions).forEach(pos => {
+            const pool = database.players.filter(p => p.position === pos);
+            for (let i=0; i<positions[pos]; i++) {
+                const player = pool.splice(Math.floor(Math.random()*pool.length), 1)[0];
+                selected.push(player);
+            }
+        });
+        return selected;
+    }
+    team1.players = assignPlayers();
+    team2.players = assignPlayers();
+
+    document.getElementById('lineup1').innerHTML = "<h3>" + team1.name + " (Coach: " + team1.coach + ")</h3>" + team1.players.map(p => p.name + " - " + p.club).join("<br>");
+    document.getElementById('lineup2').innerHTML = "<h3>" + team2.name + " (Coach: " + team2.coach + ")</h3>" + team2.players.map(p => p.name + " - " + p.club).join("<br>");
+
+    document.getElementById('setup').style.display = 'none';
+    document.getElementById('preMatch').style.display = 'block';
+}
+
+function simulateMatch() {
+    console.log("Simulating match...");
+    document.getElementById('preMatch').style.display = 'none';
+    document.getElementById('match').style.display = 'block';
+    eventsLog = [];
+    stats = { goals1:0, goals2:0, shots1:0, shots2:0, yellow1:0, yellow2:0, red1:0, red2:0, scorers1:[], scorers2:[] };
+
+    const eventTemplates = [
+        "{minute}' {player} scores a stunning goal for {team}!",
+        "{minute}' Brilliant save by the goalkeeper from {player}'s shot!",
+        "{minute}' {player} hits the post! So close for {team}!",
+        "{minute}' Yellow card shown to {player} of {team}",
+        "{minute}' Red card! {player} is sent off for a bad foul.",
+        "{minute}' {player} dribbles past two defenders but misses the target.",
+        "{minute}' {player} argues with the referee."
+    ];
+
+    let usedMinutes = [];
+    for (let i=0; i<12; i++) {
+        let minute;
+        do { minute = Math.floor(Math.random()*90)+1; } while (usedMinutes.includes(minute));
+        usedMinutes.push(minute);
+        const team = Math.random() > 0.5 ? team1 : team2;
+        const player = team.players[Math.floor(Math.random()*team.players.length)];
+        const template = eventTemplates[Math.floor(Math.random()*eventTemplates.length)];
+        const eventText = template.replace("{minute}", minute).replace("{player}", player.name).replace("{team}", team.name);
+        eventsLog.push(eventText);
+
+        if (template.includes("scores")) {
+            if (team === team1) { stats.goals1++; stats.scorers1.push(player.name); }
+            else { stats.goals2++; stats.scorers2.push(player.name); }
+        }
+        if (template.includes("shot") || template.includes("goal") || template.includes("hits the post")) {
+            if (team === team1) stats.shots1++; else stats.shots2++;
+        }
+        if (template.includes("Yellow card")) {
+            if (team === team1) stats.yellow1++; else stats.yellow2++;
+        }
+        if (template.includes("Red card")) {
+            if (team === team1) stats.red1++; else stats.red2++;
+        }
+    }
+    document.getElementById('events').innerHTML = eventsLog.sort((a,b) => parseInt(a) - parseInt(b)).join("<br>");
+    setTimeout(showStats, 1000);
+}
+
+function showStats() {
+    console.log("Showing stats...");
+    document.getElementById('match').style.display = 'none';
+    document.getElementById('postMatch').style.display = 'block';
+    document.getElementById('stats').innerHTML = "<h3>Final Score: " + team1.name + " " + stats.goals1 + " - " + stats.goals2 + " " + team2.name + "</h3>" +
+        "<p>" + team1.name + " Shots: " + stats.shots1 + ", Yellow Cards: " + stats.yellow1 + ", Red Cards: " + stats.red1 + "</p>" +
+        "<p>Scorers: " + (stats.scorers1.join(", ") || "None") + "</p>" +
+        "<p>" + team2.name + " Shots: " + stats.shots2 + ", Yellow Cards: " + stats.yellow2 + ", Red Cards: " + stats.red2 + "</p>" +
+        "<p>Scorers: " + (stats.scorers2.join(", ") || "None") + "</p>";
+}
+</script>
+
+</body>
+</html>
